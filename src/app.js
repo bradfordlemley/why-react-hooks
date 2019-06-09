@@ -1,50 +1,61 @@
 import React, {useEffect, useState, useRef} from 'react'
-import {useGeoPosition} from 'the-platform'
-import * as firebase from './firebase'
+// import {useGeoPosition} from 'the-platform'
+// import * as firebase from './firebase'
+import { createStatedLib } from '@stated-library/base';
+import { mapState } from '@stated-library/core';
+import { use } from '@stated-library/react';
+import createMsgLib from './MsgLib';
 
-function useStickyScrollContainer(
-  scrollContainerRef,
-  inputs = [],
-) {
-  const [isStuck, setStuck] = useState(true)
-  useEffect(() => {
+const createStickyScrollerLib = (initialElement) => createStatedLib(
+  {},
+  base => {
+    let element;
+    let isStuck = false;
+  
     function handleScroll() {
       const {
         clientHeight,
         scrollTop,
         scrollHeight,
-      } = scrollContainerRef.current
-      const partialPixelBuffer = 10
+      } = element;
+
+      const partialPixelBuffer = 10;
+
       const scrolledUp =
         clientHeight + scrollTop <
         scrollHeight - partialPixelBuffer
-      setStuck(!scrolledUp)
-    }
-    scrollContainerRef.current.addEventListener(
-      'scroll',
-      handleScroll,
-    )
-    return () =>
-      scrollContainerRef.current.removeEventListener(
-        'scroll',
-        handleScroll,
-      )
-  }, [])
 
-  useEffect(() => {
-    if (isStuck) {
-      scrollContainerRef.current.scrollTop =
-        scrollContainerRef.current.scrollHeight
+      isStuck = !scrolledUp;
     }
-  }, [
-    scrollContainerRef.current
-      ? scrollContainerRef.current.scrollHeight
-      : 0,
-    ...inputs,
-  ])
+  
+    function setElement(el) {
+      console.log('setting element: ', el)
+      if (el !== element) {
+        console.log('got diff element: ', el)
+        element && element.removeEventListener('scroll', handleScroll);
+        element = el;
+        element && element.addEventListener('scroll', handleScroll);
+      }
+    }
 
-  return isStuck
-}
+    function autoscroll() {
+      if (isStuck) {
+        element.scrollTop = element.scrollHeight;
+      }
+    }
+  
+    setElement(initialElement);
+    base.onUnsubscribe && base.onUnsubscribe(() => {
+      setElement();
+    });
+
+    return {
+      setElement,
+      autoscroll,
+    }
+  }
+);
+
 
 function checkInView(
   element,
@@ -61,82 +72,116 @@ function checkInView(
   return isTotal || isPartial
 }
 
-function useVisibilityCounter(containerRef) {
-  const [seenNodes, setSeenNodes] = useState([])
+const createVisCounterLib = initialElement => createStatedLib(
+  { seenNodes: [] },
+  base => {
+    let element = initialElement;
 
-  useEffect(() => {
-    const newVisibleChildren = Array.from(
-      containerRef.current.children,
-    )
-      .filter(n => !seenNodes.includes(n))
-      .filter(n => checkInView(n, containerRef.current))
-    if (newVisibleChildren.length) {
-      setSeenNodes(seen =>
-        Array.from(
-          new Set([...seen, ...newVisibleChildren]),
-        ),
+    function update() {
+      console.log('updating visible')
+      const newVisibleChildren = Array.from(
+        element.children,
       )
+        .filter(n => !base.state.seenNodes.includes(n))
+        .filter(n => checkInView(n, element))
+      if (newVisibleChildren.length) {
+        base.updateState({
+          seenNodes: Array.from(
+            new Set([...base.state.seenNodes, ...newVisibleChildren])
+          ),
+        })
+      }
     }
-  })
 
-  return seenNodes
-}
+    function handleScroll() {
+      update();
+    }
+
+    function setElement(el) {
+      if (el !== element) {
+        element && element.removeEventListener('scroll', handleScroll);
+        element = el;
+        element && element.addEventListener('scroll', handleScroll);
+        update();
+      }
+    }
+
+    setElement(initialElement);
+    base.onUnsubscribe && base.onUnsubscribe(() => {
+      setElement();
+    });
+    
+    return {
+      setElement,
+      update,
+    }
+  }
+)
 
 function App() {
-  const {
-    coords: {latitude, longitude},
-  } = useGeoPosition()
-  const messagesContainerRef = useRef()
-  const [messages, setMessages] = useState([])
-  const [username, setUsername] = useState(() =>
-    window.localStorage.getItem('geo-chat:username'),
-  )
-  useStickyScrollContainer(messagesContainerRef, [
-    messages.length,
-  ])
-  const visibleNodes = useVisibilityCounter(
-    messagesContainerRef,
-  )
-  const unreadCount = messages.length - visibleNodes.length
+  const messagesContainerRef = useRef();
+  const { addMessage, latitude, longitude, messages, setUsername, username } = 
+    use(() => {
+      const lib = createMsgLib();
+      return mapState(
+        lib.state$,
+        state => ({
+          ...state,
+          addMessage: lib.addMessage,
+          setUsername: lib.setUsername,
+        })
+      )
+    });
 
-  function sendMessage(e) {
-    e.preventDefault()
-    firebase.addMessage({
-      latitude,
-      longitude,
-      username: username || 'anonymous',
-      content: e.target.elements.message.value,
-    })
-    e.target.elements.message.value = ''
-    e.target.elements.message.focus()
-  }
+  const { autoscroll, setElement } = use(() => {
+    const lib = createStickyScrollerLib(messagesContainerRef.current);
+    return mapState(
+      lib.state$,
+      state => ({
+        ...state,
+        autoscroll: lib.autoscroll,
+        setElement: lib.setElement,
+      })
+    );
+  });
+
+  const { seenNodes, setElement: setVisElement, update } = use(() => {
+    const lib = createVisCounterLib(messagesContainerRef.current);
+    return mapState(
+      lib.state$,
+      state => ({
+        ...state,
+        setElement: lib.setElement,
+        update: lib.update,
+      })
+    )
+  });
 
   useEffect(() => {
-    const unsubscribe = firebase.subscribe(
-      {latitude, longitude},
-      messages => {
-        setMessages(messages)
-      },
-    )
-    return () => {
-      unsubscribe()
-    }
-  }, [latitude, longitude])
+    setElement(messagesContainerRef.current);
+    setVisElement(messagesContainerRef.current);
+  }, [messagesContainerRef.current]);
+
+  useEffect(() => {
+    update();
+  })
+
+  useEffect(() => {
+    autoscroll();
+  }, [
+    messagesContainerRef.current
+      ? messagesContainerRef.current.scrollHeight
+      : 0,
+    messages.length
+  ]);
+
+  const unreadCount = messages.length - seenNodes.length;
 
   useEffect(() => {
     document.title = unreadCount
       ? `Unread: ${unreadCount}`
       : 'All read'
   }, [unreadCount])
-
-  function handleUsernameChange(e) {
-    const username = e.target.value
-    setUsername(username)
-    window.localStorage.setItem(
-      'geo-chat:username',
-      username,
-    )
-  }
 
   return (
     <div>
@@ -145,9 +190,14 @@ function App() {
         type="text"
         id="username"
         value={username}
-        onChange={handleUsernameChange}
+        onChange={e => setUsername(e.target.value)}
       />
-      <form onSubmit={sendMessage}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        addMessage(e.target.elements.message.value);
+        e.target.elements.message.value = '';
+        e.target.elements.message.focus();
+      }}>
         <label htmlFor="message">Message</label>
         <input type="text" id="message" />
         <button type="submit">send</button>

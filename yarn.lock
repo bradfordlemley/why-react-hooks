@@ -1033,6 +1033,35 @@
   resolved "https://registry.yarnpkg.com/@nodelib/fs.stat/-/fs.stat-1.1.3.tgz#2b5a3ab3f918cca48a8c754c08168e3f03eba61b"
   integrity sha512-shAmDyaQC4H92APFoIaVDHCx5bStIocgvbwQyxPRrbUY20V1EYTbSDchWbuwlMG3V17cprZhA6+78JfB+3DTPw==
 
+"@stated-library/base@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/@stated-library/base/-/base-1.0.5.tgz#4eed609b5bb5582569f8fa548b2ef9cc68c03e31"
+  integrity sha512-Ay4ZCf1ohHqkwe5W5GWVjLlpP9dMC3sL2ZUdc2idBOcLFzQ32EQSHVYA7BeKsVvhUtNjdQ+y6hcgr+TJHFsacQ==
+  dependencies:
+    "@stated-library/core" "^1.0.5"
+    "@stated-library/interface" "^1.0.3"
+
+"@stated-library/core@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/@stated-library/core/-/core-1.0.5.tgz#93a457a2d02977031defa983621bea19c7d9051b"
+  integrity sha512-30gwfE6q2RZRGkWNU9PlCZgELyQWpRxT9gKE8cA4CPOCnCHRuK/JA2OpYon21lxBXhDXBnw2TELXWZPyS867aw==
+  dependencies:
+    "@stated-library/interface" "^1.0.3"
+    lodash "^4.17.11"
+
+"@stated-library/interface@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.npmjs.org/@stated-library/interface/-/interface-1.0.3.tgz#188eea65c36fbc953dc1adcb73d7a34aed049d82"
+  integrity sha512-ckJN2p10A+K0F+xomdLtuKzBSvj8ybBaCTr0sQTMfE8ZqbZY9bDazBw4qSYSTMoVDShSkqUoQ3JYr5kbN/MZsw==
+
+"@stated-library/react@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/@stated-library/react/-/react-1.0.5.tgz#9b977d3860d2103f659dfa9981b19e08b21aa298"
+  integrity sha512-jTPCuT9CF8DIAEci4HCP2ylwWyuD8GdqjQHmEqreakFkyD/HVQ6xxrtBxFSuB0QCuXNvueMhqiet3OkAW9exNA==
+  dependencies:
+    "@stated-library/core" "^1.0.5"
+    "@stated-library/interface" "^1.0.3"
+
 "@svgr/babel-plugin-add-jsx-attribute@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@svgr/babel-plugin-add-jsx-attribute/-/babel-plugin-add-jsx-attribute-4.0.0.tgz#5acf239cd2747b1a36ec7e708de05d914cb9b948"
